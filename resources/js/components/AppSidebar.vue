@@ -5,7 +5,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, ClipboardList, Folder, LayoutGrid, Tags } from 'lucide-vue-next';
+import { BookOpen, ChartColumn, ClipboardList, Folder, LayoutGrid, Tags } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AppLogo from './AppLogo.vue';
 
@@ -17,8 +17,13 @@ const mainNavItems = computed<NavItem[]>(() => [
         href: '/orders',
         icon: ClipboardList,
     },
-    // Only owners can manage prices (enforced on the server by the manage-catalog gate).
-    ...(page.props.auth.user?.role === 'owner' ? [{ title: 'Precios', href: '/catalog', icon: Tags }] : []),
+    // Owner-only entries; the server enforces this with the manage-catalog and view-reports gates.
+    ...(page.props.auth.user?.role === 'owner'
+        ? [
+              { title: 'Reportes', href: '/reports', icon: ChartColumn },
+              { title: 'Precios', href: '/catalog', icon: Tags },
+          ]
+        : []),
     {
         title: 'Dashboard',
         href: '/dashboard',
