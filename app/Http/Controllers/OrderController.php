@@ -12,16 +12,19 @@ use App\Models\Service;
 use App\Models\ServicePrice;
 use App\Models\Vehicle;
 use App\Models\VehicleType;
+use App\Support\Whatsapp;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class OrderController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $today = today();
+        $businessName = $request->user()->business->name;
 
         $orders = Order::with(['vehicle.type', 'vehicle.customer', 'items.service'])
             ->where(fn ($q) => $q
@@ -30,6 +33,12 @@ class OrderController extends Controller
             ->orderBy('created_at')
             ->get()
             ->map(fn (Order $order) => [
+                'whatsapp_url' => $order->status === OrderStatus::Ready
+                    ? Whatsapp::link(
+                        $order->vehicle->customer?->phone,
+                        Whatsapp::vehicleReadyMessage($order->vehicle->customer?->name, $order->vehicle->plate, $businessName),
+                    )
+                    : null,
                 'id' => $order->id,
                 'plate' => $order->vehicle->plate,
                 'vehicle_type' => $order->vehicle->type->name,

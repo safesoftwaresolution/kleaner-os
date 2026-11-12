@@ -249,6 +249,69 @@ class OrderBoardTest extends TestCase
         $this->assertNotNull($fresh->paid_at);
     }
 
+    private function readyOrderFor(?string $phone, ?string $name = null, string $plate = 'ABC123'): Order
+    {
+        $customer = $phone === null ? null : Customer::create([
+            'business_id' => $this->business->id,
+            'name' => $name,
+            'phone' => $phone,
+        ]);
+        $vehicle = Vehicle::create([
+            'business_id' => $this->business->id,
+            'vehicle_type_id' => $this->car->id,
+            'customer_id' => $customer?->id,
+            'plate' => $plate,
+        ]);
+
+        return Order::create([
+            'business_id' => $this->business->id,
+            'vehicle_id' => $vehicle->id,
+            'status' => OrderStatus::Ready,
+        ]);
+    }
+
+    public function test_ready_orders_get_a_whatsapp_link_with_a_ready_message(): void
+    {
+        $this->readyOrderFor('300 123 4567', 'Ana');
+
+        $message = 'Hola Ana, tu vehículo con placa ABC123 ya está listo en Lavadero Uno. ¡Te esperamos!';
+
+        $this->actingAs($this->user)
+            ->get('/orders')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('orders.0.whatsapp_url', 'https://wa.me/573001234567?text='.rawurlencode($message)));
+    }
+
+    public function test_the_whatsapp_message_omits_the_name_when_unknown(): void
+    {
+        $this->readyOrderFor('3001234567');
+
+        $message = 'Hola, tu vehículo con placa ABC123 ya está listo en Lavadero Uno. ¡Te esperamos!';
+
+        $this->actingAs($this->user)
+            ->get('/orders')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('orders.0.whatsapp_url', 'https://wa.me/573001234567?text='.rawurlencode($message)));
+    }
+
+    public function test_there_is_no_whatsapp_link_without_a_valid_phone_or_before_the_order_is_ready(): void
+    {
+        $this->readyOrderFor(null, null, 'NOC111');
+        $this->readyOrderFor('6012345678', null, 'LND000');
+        $queued = $this->order('QUE111');
+        $queued->vehicle->customer()->associate(
+            Customer::create(['business_id' => $this->business->id, 'phone' => '3001234567'])
+        )->save();
+
+        $this->actingAs($this->user)
+            ->get('/orders')
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('orders', 3)
+                ->where('orders.0.whatsapp_url', null)
+                ->where('orders.1.whatsapp_url', null)
+                ->where('orders.2.whatsapp_url', null));
+    }
+
     public function test_orders_of_other_businesses_cannot_be_updated(): void
     {
         $other = Business::create(['name' => 'Otro']);

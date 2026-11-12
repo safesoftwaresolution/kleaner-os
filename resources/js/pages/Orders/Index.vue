@@ -18,6 +18,7 @@ interface OrderCard {
     total: number;
     services: string[];
     payment_method: string | null;
+    whatsapp_url: string | null;
     created_at: string;
 }
 
@@ -241,6 +242,10 @@ const advance = (order: OrderCard, status: Status, payment_method?: string) => {
                                 <Button v-if="order.status === 'queued'" size="sm" @click="advance(order, 'washing')">Empezar</Button>
                                 <Button v-if="order.status === 'washing'" size="sm" @click="advance(order, 'ready')">Listo</Button>
                                 <template v-if="order.status === 'ready'">
+                                    <Button v-if="order.whatsapp_url" size="sm" variant="secondary" as-child>
+                                        <a :href="order.whatsapp_url" target="_blank" rel="noopener noreferrer">Avisar por WhatsApp</a>
+                                    </Button>
+                                    <span v-else class="w-full text-xs text-muted-foreground">Sin celular válido para WhatsApp.</span>
                                     <Button size="sm" @click="advance(order, 'delivered', 'cash')">Entregar · efectivo</Button>
                                     <Button size="sm" variant="outline" @click="advance(order, 'delivered', 'transfer')">Entregar · transferencia</Button>
                                 </template>
