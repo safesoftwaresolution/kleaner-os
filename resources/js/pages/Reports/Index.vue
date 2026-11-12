@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
+import { Car } from 'lucide-vue-next';
 import { computed } from 'vue';
 
 interface Row {
@@ -77,31 +78,31 @@ const average = computed(() => (props.report.vehicles ? Math.round(props.report.
             </div>
 
             <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
-                <Card>
+                <Card class="animate-rise border-t-4 border-t-primary ">
                     <CardHeader class="pb-2"><CardTitle class="text-sm font-medium text-muted-foreground">Vehículos</CardTitle></CardHeader>
                     <CardContent>
-                        <p class="text-2xl font-bold" data-testid="vehicles">{{ report.vehicles }}</p>
+                        <p class="font-display text-3xl font-extrabold tabular-nums" data-testid="vehicles">{{ report.vehicles }}</p>
                         <p class="text-xs text-muted-foreground">{{ report.returning_vehicles }} ya habían venido</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card class="animate-rise border-t-4 border-t-status-ready [animation-delay:80ms]">
                     <CardHeader class="pb-2"><CardTitle class="text-sm font-medium text-muted-foreground">Cobrado</CardTitle></CardHeader>
                     <CardContent>
-                        <p class="text-2xl font-bold" data-testid="collected">{{ money(report.collected) }}</p>
+                        <p class="font-display text-3xl font-extrabold tabular-nums" data-testid="collected">{{ money(report.collected) }}</p>
                         <p class="text-xs text-muted-foreground">Entregado y pagado este día</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card class="animate-rise border-t-4 border-t-status-queued [animation-delay:160ms]">
                     <CardHeader class="pb-2"><CardTitle class="text-sm font-medium text-muted-foreground">Por cobrar</CardTitle></CardHeader>
                     <CardContent>
-                        <p class="text-2xl font-bold" data-testid="pending">{{ money(report.pending_total) }}</p>
+                        <p class="font-display text-3xl font-extrabold tabular-nums" data-testid="pending">{{ money(report.pending_total) }}</p>
                         <p class="text-xs text-muted-foreground">{{ report.pending_count }} sin entregar</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card class="animate-rise border-t-4 border-t-brand-cyan [animation-delay:240ms]">
                     <CardHeader class="pb-2"><CardTitle class="text-sm font-medium text-muted-foreground">Promedio por vehículo</CardTitle></CardHeader>
                     <CardContent>
-                        <p class="text-2xl font-bold">{{ money(average) }}</p>
+                        <p class="font-display text-3xl font-extrabold tabular-nums">{{ money(average) }}</p>
                         <p class="text-xs text-muted-foreground">Cobrado ÷ vehículos del día</p>
                     </CardContent>
                 </Card>
@@ -154,10 +155,10 @@ const average = computed(() => (props.report.vehicles ? Math.round(props.report.
                     >
                         <span class="w-16 shrink-0 capitalize">{{ shortDay(day.date) }}</span>
                         <span class="h-3 flex-1 rounded bg-muted">
-                            <span class="block h-3 rounded bg-primary" :style="{ width: `${(day.collected / maxCollected) * 100}%` }" />
+                            <span class="block h-3 rounded bg-gradient-to-r from-brand-cyan to-primary transition-all duration-500" :style="{ width: `${(day.collected / maxCollected) * 100}%` }" />
                         </span>
                         <span class="w-24 shrink-0 text-right">{{ money(day.collected) }}</span>
-                        <span class="w-12 shrink-0 text-right text-muted-foreground">{{ day.vehicles }} 🚗</span>
+                        <span class="flex w-12 shrink-0 items-center justify-end gap-1 text-muted-foreground">{{ day.vehicles }} <Car class="size-3.5" /></span>
                     </button>
                 </CardContent>
             </Card>
