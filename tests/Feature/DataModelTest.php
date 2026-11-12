@@ -26,7 +26,7 @@ class DataModelTest extends TestCase
 
     private function makeVehicle(Business $business, string $plate, string $typeName = 'Carro'): Vehicle
     {
-        $type = VehicleType::create(['business_id' => $business->id, 'name' => $typeName]);
+        $type = VehicleType::firstOrCreate(['business_id' => $business->id, 'name' => $typeName]);
 
         return Vehicle::create([
             'business_id' => $business->id,

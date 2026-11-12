@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\VehicleLookupController;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +19,14 @@ Route::middleware(['auth', 'verified', 'business'])->group(function () {
     Route::post('orders', [OrderController::class, 'store'])->name('orders.store');
     Route::patch('orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.status');
     Route::get('vehicles/lookup', VehicleLookupController::class)->name('vehicles.lookup');
+
+    Route::middleware('can:manage-catalog')->prefix('catalog')->name('catalog.')->group(function () {
+        Route::get('/', [CatalogController::class, 'index'])->name('index');
+        Route::post('vehicle-types', [CatalogController::class, 'storeVehicleType'])->name('vehicle-types.store');
+        Route::post('services', [CatalogController::class, 'storeService'])->name('services.store');
+        Route::patch('services/{service}', [CatalogController::class, 'updateService'])->name('services.update');
+        Route::put('services/{service}/prices', [CatalogController::class, 'updatePrices'])->name('services.prices');
+    });
 });
 
 require __DIR__.'/settings.php';
