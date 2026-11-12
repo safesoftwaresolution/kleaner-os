@@ -21,12 +21,18 @@ class DatabaseSeeder extends Seeder
     {
         $business = Business::create(['name' => 'Lavadero Demo']);
 
-        User::factory()->create([
-            'name' => 'Dueño Demo',
-            'email' => 'test@example.com',
-            'business_id' => $business->id,
-            'role' => UserRole::Owner,
-        ]);
+        foreach ([
+            ['Dueño Demo', 'test@example.com', UserRole::Owner],
+            ['Cajero Demo', 'cajero@example.com', UserRole::Cashier],
+            ['Operador Demo', 'operador@example.com', UserRole::Operator],
+        ] as [$name, $email, $role]) {
+            User::factory()->create([
+                'name' => $name,
+                'email' => $email,
+                'business_id' => $business->id,
+                'role' => $role,
+            ]);
+        }
 
         $car = VehicleType::create(['business_id' => $business->id, 'name' => 'Carro']);
         $moto = VehicleType::create(['business_id' => $business->id, 'name' => 'Moto']);
