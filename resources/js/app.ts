@@ -1,4 +1,7 @@
 import '../css/app.css';
+// Self-hosted fonts: no third-party request, and they work with a flaky connection.
+import '@fontsource-variable/outfit';
+import '@fontsource-variable/plus-jakarta-sans';
 
 import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
@@ -20,7 +23,7 @@ declare module 'vite/client' {
     }
 }
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'Kleaner OS';
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
@@ -32,7 +35,7 @@ createInertiaApp({
             .mount(el);
     },
     progress: {
-        color: '#4B5563',
+        color: '#22D3EE',
     },
 });
 
