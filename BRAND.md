@@ -92,18 +92,36 @@ Spanish (Colombia), informal but respectful, direct, practical. Short sentences.
 
 Never invent numbers, customers or testimonials. If a figure is not real yet, leave it out.
 
-## 7. Where things live
+## 7. Charts
+
+Charts are hand-built SVG/HTML (no chart library) in `resources/js/components/charts/`, following the dataviz rules:
+
+- **One axis, thin marks.** Bars are at most 24px thick, 4px rounded at the data end and square on the baseline.
+  Stacked segments are separated by a 2px surface gap, never a border. Grid and axes are solid hairlines.
+- **Series colors** are `--viz-1` (blue) and `--viz-2` (orange), exact hex values in `resources/css/app.css`.
+  They were run through the palette validator (lightness band, chroma floor, CVD separation, normal-vision
+  floor, 3:1 contrast against the surface) in both themes. Dark mode uses a deeper blue (`#0a93d3`) to stay inside the dark band.
+  Re-validate before changing either value or adding a third series.
+- **Never more series than can be told apart.** A single series needs no legend; two or more get one. Nominal
+  categories (vehicle type, service) are ranked bars in one color, not a value ramp. A long tail folds into "Otros".
+- **Every chart has a table twin** (toggle in the card header) and a tooltip that also opens with the arrow keys.
+- **One filter row above the charts** (7 / 30 / 90 days) scopes every number below it; while it reloads the
+  previous render stays on screen, dimmed.
+- Deltas always carry an icon and a sign, never color alone, and compare against the previous period of the same length.
+
+## 8. Where things live
 
 | Thing | File |
 |---|---|
 | Color and radius tokens, plate chip, reduced-motion rule | `resources/css/app.css` |
 | Fonts, keyframes, status colors | `tailwind.config.js` |
+| Chart components and tokens | `resources/js/components/charts/`, `--viz-*` in `resources/css/app.css` |
 | Logo mark and wordmark | `resources/js/components/AppLogoIcon.vue`, `AppLogo.vue` |
 | Login and brand panel | `resources/js/layouts/auth/AuthSplitLayout.vue` |
 | Landing | `resources/js/pages/Welcome.vue` |
 | Icons, manifest, theme color | `public/`, `resources/views/app.blade.php` |
 
-## 8. Open items
+## 9. Open items
 
 - Trademark and domain checks are still pending (SIC search; `kleaneros.com` / `.co` looked free on RDAP but were not purchased).
 - The installable app (`manifest.webmanifest`) has no service worker yet, so it does not work offline.

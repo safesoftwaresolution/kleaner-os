@@ -36,6 +36,11 @@
         --brand-ink: 210 62% 11%;
         --spark: 48 96% 53%;
 
+        /* Chart series (categorical, validated with the dataviz palette checker: lightness band, chroma,
+           CVD separation, normal-vision floor and 3:1 contrast against the surface). Exact hex on purpose. */
+        --viz-1: #0369a1;
+        --viz-2: #ea580c;
+
         /* Order status */
         --status-queued: 38 92% 50%;
         --status-queued-text: 26 90% 33%; /* amber that passes 4.5:1 as text on light surfaces */
@@ -81,6 +86,10 @@
         --border: 210 35% 19%;
         --input: 210 35% 22%;
         --ring: 188 86% 53%;
+
+        /* Dark surface needs a deeper blue to stay inside the dark lightness band. */
+        --viz-1: #0a93d3;
+        --viz-2: #ea580c;
 
         --status-queued: 38 92% 55%;
         --status-queued-text: 38 92% 55%;

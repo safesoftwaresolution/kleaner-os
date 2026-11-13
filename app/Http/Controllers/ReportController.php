@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\OrderStatus;
 use App\Models\Order;
+use App\Support\Breakdown;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -83,16 +84,7 @@ class ReportController extends Controller
      */
     private function breakdown(Collection $items, callable $label, callable $amount, string $key = 'name'): array
     {
-        return $items
-            ->groupBy($label)
-            ->map(fn (Collection $group, string $name) => [
-                $key => $name,
-                'count' => $group->count(),
-                'total' => (int) $group->sum($amount),
-            ])
-            ->sortBy([['total', 'desc'], [$key, 'asc']])
-            ->values()
-            ->all();
+        return Breakdown::of($items, $label, $amount, $key);
     }
 
     /** @return list<array{date: string, vehicles: int, collected: int}> */

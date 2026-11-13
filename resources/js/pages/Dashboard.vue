@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import AnalyticsSection from '@/components/dashboard/AnalyticsSection.vue';
 import { Button } from '@/components/ui/button';
 import { useCountUp } from '@/composables/useCountUp';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem, type SharedData } from '@/types';
+import { type Analytics } from '@/types/analytics';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { ArrowRight, ChartColumn, CircleCheck, Clock, Droplets, Plus } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
@@ -11,6 +13,8 @@ const props = defineProps<{
     business: string | null;
     counts: { queued: number; washing: number; ready: number; delivered_today: number };
     collected_today: number;
+    /** Only the owner receives it; null for other roles and accounts without a business. */
+    analytics: Analytics | null;
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Inicio', href: '/dashboard' }];
@@ -55,7 +59,7 @@ const tiles = computed(() => [
     <Head title="Inicio" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 md:p-6">
+        <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 md:p-6">
             <!-- Account not attached to a business yet -->
             <div v-if="!business" class="animate-rise rounded-2xl border border-dashed bg-card p-8 text-center">
                 <h1 class="text-2xl font-bold">¡Hola, {{ firstName }}!</h1>
@@ -100,6 +104,8 @@ const tiles = computed(() => [
                         </p>
                     </Link>
                 </section>
+
+                <AnalyticsSection v-if="analytics" :analytics="analytics" />
             </template>
         </div>
     </AppLayout>

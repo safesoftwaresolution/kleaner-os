@@ -4,15 +4,24 @@ namespace App\Http\Controllers;
 
 use App\Enums\OrderStatus;
 use App\Models\Order;
+use App\Support\DashboardAnalytics;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
+    private const DEFAULT_RANGE = 30;
+
     public function index(Request $request): Response
     {
         $user = $request->user();
+
+        $data = $request->validate([
+            'range' => ['nullable', 'integer', Rule::in(DashboardAnalytics::RANGES)],
+        ]);
 
         // Without a business the BelongsToBusiness scope applies no filter, so never query orders here:
         // it would expose every business's data to an account that is not attached to one.
@@ -21,6 +30,7 @@ class DashboardController extends Controller
                 'business' => null,
                 'counts' => $this->counts([], 0),
                 'collected_today' => 0,
+                'analytics' => null,
             ]);
         }
 
@@ -36,6 +46,10 @@ class DashboardController extends Controller
             'business' => $user->business->name,
             'counts' => $this->counts($open, (clone $paidToday)->count()),
             'collected_today' => (int) $paidToday->sum('total'),
+            // Money and customer trends are for the owner, like the daily report.
+            'analytics' => $user->can('view-reports')
+                ? DashboardAnalytics::compute(CarbonImmutable::today(), (int) ($data['range'] ?? self::DEFAULT_RANGE))
+                : null,
         ]);
     }
 
