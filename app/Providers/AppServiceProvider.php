@@ -24,5 +24,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::define('manage-catalog', fn (User $user) => $user->role === UserRole::Owner);
         Gate::define('view-reports', fn (User $user) => $user->role === UserRole::Owner);
+        // Customer phones and spending: owner and cashier; operators only wash.
+        Gate::define('manage-customers', fn (User $user) => in_array($user->role, [UserRole::Owner, UserRole::Cashier], true));
     }
 }

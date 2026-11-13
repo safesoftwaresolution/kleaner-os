@@ -4,6 +4,7 @@ use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\VehicleLookupController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -19,6 +20,12 @@ Route::middleware(['auth', 'verified', 'business'])->group(function () {
     Route::post('orders', [OrderController::class, 'store'])->name('orders.store');
     Route::patch('orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.status');
     Route::get('vehicles/lookup', VehicleLookupController::class)->name('vehicles.lookup');
+
+    Route::middleware('can:manage-customers')->group(function () {
+        Route::get('vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
+        Route::get('vehicles/{vehicle}', [VehicleController::class, 'show'])->whereNumber('vehicle')->name('vehicles.show');
+        Route::put('vehicles/{vehicle}', [VehicleController::class, 'update'])->whereNumber('vehicle')->name('vehicles.update');
+    });
 
     Route::get('reports', [ReportController::class, 'index'])->middleware('can:view-reports')->name('reports.index');
 

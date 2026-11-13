@@ -4,7 +4,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { ChartColumn, ClipboardList, LayoutGrid, Tags } from 'lucide-vue-next';
+import { ChartColumn, ClipboardList, LayoutGrid, Tags, Users } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AppLogo from './AppLogo.vue';
 
@@ -16,6 +16,8 @@ const mainNavItems = computed<NavItem[]>(() => [
         href: '/orders',
         icon: ClipboardList,
     },
+    // Customer data: owner and cashier (manage-customers gate on the server).
+    ...(['owner', 'cashier'].includes(page.props.auth.user?.role ?? '') ? [{ title: 'Clientes', href: '/vehicles', icon: Users }] : []),
     // Owner-only entries; the server enforces this with the manage-catalog and view-reports gates.
     ...(page.props.auth.user?.role === 'owner'
         ? [
