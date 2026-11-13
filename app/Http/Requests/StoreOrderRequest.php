@@ -23,10 +23,10 @@ class StoreOrderRequest extends FormRequest
 
         return [
             'plate' => ['required', 'string', 'max:10'],
-            'vehicle_type_id' => ['required', Rule::exists('vehicle_types', 'id')->where('business_id', $businessId)],
+            'vehicle_type_id' => ['required', 'integer', Rule::exists('vehicle_types', 'id')->where('business_id', $businessId)],
             'customer_name' => ['nullable', 'string', 'max:100'],
             'customer_phone' => ['nullable', 'string', 'max:20'],
-            'service_id' => ['required', Rule::exists('services', 'id')
+            'service_id' => ['required', 'integer', Rule::exists('services', 'id')
                 ->where('business_id', $businessId)
                 ->where('kind', ServiceKind::Main->value)
                 ->where('active', true)],

@@ -193,6 +193,21 @@ class OrderBoardTest extends TestCase
         $this->assertSame(0, Order::count());
     }
 
+    public function test_store_rejects_array_values_for_the_type_and_the_service(): void
+    {
+        // Arrays pass the exists rule but would be cast to id 1 when the order is created.
+        $this->actingAs($this->user)
+            ->post('/orders', [
+                'plate' => 'ARR123',
+                'vehicle_type_id' => [$this->car->id],
+                'service_id' => [$this->wash->id],
+            ])
+            ->assertSessionHasErrors(['vehicle_type_id', 'service_id']);
+
+        $this->assertSame(0, Order::count());
+        $this->assertSame(0, Vehicle::count());
+    }
+
     public function test_store_requires_plate_type_and_main_service(): void
     {
         $this->actingAs($this->user)
