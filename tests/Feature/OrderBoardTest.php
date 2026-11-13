@@ -231,7 +231,7 @@ class OrderBoardTest extends TestCase
     public function test_delivering_requires_a_payment_method_and_stamps_paid_at(): void
     {
         $order = $this->order();
-        $order->update(['status' => OrderStatus::Ready]);
+        $order->update(['status' => OrderStatus::Ready, 'total' => 30000]);
 
         $this->actingAs($this->user)
             ->patch("/orders/{$order->id}/status", ['status' => 'delivered'])
@@ -240,7 +240,7 @@ class OrderBoardTest extends TestCase
         $this->assertSame(OrderStatus::Ready, $order->fresh()->status);
 
         $this->actingAs($this->user)
-            ->patch("/orders/{$order->id}/status", ['status' => 'delivered', 'payment_method' => 'cash'])
+            ->patch("/orders/{$order->id}/status", ['status' => 'delivered', 'payment_method' => 'cash', 'cash_received' => 50000])
             ->assertRedirect();
 
         $fresh = $order->fresh();
@@ -310,6 +310,104 @@ class OrderBoardTest extends TestCase
                 ->where('orders.0.whatsapp_url', null)
                 ->where('orders.1.whatsapp_url', null)
                 ->where('orders.2.whatsapp_url', null));
+    }
+
+    private function readyOrderWithTotal(string $plate, int $total): Order
+    {
+        $order = $this->order($plate);
+        $order->update(['status' => OrderStatus::Ready, 'total' => $total]);
+
+        return $order;
+    }
+
+    public function test_cash_delivery_requires_the_amount_received(): void
+    {
+        $order = $this->readyOrderWithTotal('AAA111', 30000);
+
+        $this->actingAs($this->user)
+            ->patch("/orders/{$order->id}/status", ['status' => 'delivered', 'payment_method' => 'cash'])
+            ->assertSessionHasErrors('cash_received');
+
+        $this->assertSame(OrderStatus::Ready, $order->fresh()->status);
+    }
+
+    public function test_cash_received_must_cover_the_total(): void
+    {
+        $order = $this->readyOrderWithTotal('AAA111', 30000);
+
+        $this->actingAs($this->user)
+            ->patch("/orders/{$order->id}/status", ['status' => 'delivered', 'payment_method' => 'cash', 'cash_received' => 29999])
+            ->assertSessionHasErrors('cash_received');
+
+        $fresh = $order->fresh();
+        $this->assertSame(OrderStatus::Ready, $fresh->status);
+        $this->assertNull($fresh->cash_received);
+        $this->assertNull($fresh->paid_at);
+    }
+
+    public function test_cash_received_is_stored_for_exact_and_larger_amounts(): void
+    {
+        foreach ([['AAA111', 30000], ['BBB222', 50000]] as [$plate, $received]) {
+            $order = $this->readyOrderWithTotal($plate, 30000);
+
+            $this->actingAs($this->user)
+                ->patch("/orders/{$order->id}/status", ['status' => 'delivered', 'payment_method' => 'cash', 'cash_received' => $received])
+                ->assertRedirect();
+
+            $fresh = $order->fresh();
+            $this->assertSame(OrderStatus::Delivered, $fresh->status);
+            $this->assertSame($received, $fresh->cash_received);
+        }
+    }
+
+    public function test_cash_received_must_be_a_whole_number_within_range(): void
+    {
+        $order = $this->readyOrderWithTotal('AAA111', 30000);
+
+        foreach (['abc', -1, 30000.5, 10000001] as $invalid) {
+            $this->actingAs($this->user)
+                ->patch("/orders/{$order->id}/status", ['status' => 'delivered', 'payment_method' => 'cash', 'cash_received' => $invalid])
+                ->assertSessionHasErrors('cash_received');
+        }
+
+        $this->assertSame(OrderStatus::Ready, $order->fresh()->status);
+    }
+
+    public function test_transfer_deliveries_reject_a_cash_amount(): void
+    {
+        $order = $this->readyOrderWithTotal('AAA111', 30000);
+
+        $this->actingAs($this->user)
+            ->patch("/orders/{$order->id}/status", ['status' => 'delivered', 'payment_method' => 'transfer', 'cash_received' => 50000])
+            ->assertSessionHasErrors('cash_received');
+
+        $this->assertSame(OrderStatus::Ready, $order->fresh()->status);
+
+        $this->actingAs($this->user)
+            ->patch("/orders/{$order->id}/status", ['status' => 'delivered', 'payment_method' => 'transfer'])
+            ->assertRedirect();
+
+        $fresh = $order->fresh();
+        $this->assertSame(PaymentMethod::Transfer, $fresh->payment_method);
+        $this->assertNull($fresh->cash_received);
+    }
+
+    public function test_the_board_exposes_the_cash_received_of_delivered_orders(): void
+    {
+        $order = $this->readyOrderWithTotal('AAA111', 30000);
+        $order->update([
+            'status' => OrderStatus::Delivered,
+            'payment_method' => PaymentMethod::Cash,
+            'cash_received' => 50000,
+            'paid_at' => now(),
+        ]);
+
+        $this->actingAs($this->user)
+            ->get('/orders')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('orders.0.status', 'delivered')
+                ->where('orders.0.total', 30000)
+                ->where('orders.0.cash_received', 50000));
     }
 
     public function test_orders_of_other_businesses_cannot_be_updated(): void

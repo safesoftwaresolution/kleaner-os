@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\OrderStatus;
+use App\Enums\PaymentMethod;
 use App\Enums\ServiceKind;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Requests\UpdateOrderStatusRequest;
@@ -45,6 +46,7 @@ class OrderController extends Controller
                 'phone' => $order->vehicle->customer?->phone,
                 'status' => $order->status->value,
                 'total' => $order->total,
+                'cash_received' => $order->cash_received,
                 'services' => $order->items->map(fn ($item) => $item->service->name)->all(),
                 'payment_method' => $order->payment_method?->value,
                 'created_at' => $order->created_at->toIso8601String(),
@@ -119,7 +121,13 @@ class OrderController extends Controller
         $order->update([
             'status' => $status,
             ...($status === OrderStatus::Delivered
-                ? ['payment_method' => $request->input('payment_method'), 'paid_at' => now()]
+                ? [
+                    'payment_method' => $request->input('payment_method'),
+                    'cash_received' => $request->input('payment_method') === PaymentMethod::Cash->value
+                        ? $request->integer('cash_received')
+                        : null,
+                    'paid_at' => now(),
+                ]
                 : []),
         ]);
 

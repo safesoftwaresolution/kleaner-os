@@ -20,6 +20,7 @@ class Order extends Model
         'status',
         'payment_method',
         'total',
+        'cash_received',
         'paid_at',
     ];
 
@@ -29,6 +30,7 @@ class Order extends Model
             'status' => OrderStatus::class,
             'payment_method' => PaymentMethod::class,
             'total' => 'integer',
+            'cash_received' => 'integer',
             'paid_at' => 'datetime',
         ];
     }

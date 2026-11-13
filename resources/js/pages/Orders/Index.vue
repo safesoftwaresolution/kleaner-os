@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useCountUp } from '@/composables/useCountUp';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { Bike, Car, Clock, MessageCircle } from 'lucide-vue-next';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 type Status = 'queued' | 'washing' | 'ready' | 'delivered';
 
@@ -21,6 +22,7 @@ interface OrderCard {
     services: string[];
     payment_method: string | null;
     whatsapp_url: string | null;
+    cash_received: number | null;
     created_at: string;
 }
 
@@ -129,6 +131,61 @@ const delivered = computed(() => props.orders.filter((o) => o.status === 'delive
 
 const advance = (order: OrderCard, status: Status, payment_method?: string) => {
     router.patch(route('orders.status', order.id), { status, payment_method }, { preserveScroll: true });
+};
+
+// Cash payment: ask how much the customer handed over and show the change to give back.
+const cashOrder = ref<OrderCard | null>(null);
+const cashDigits = ref('');
+const cashError = ref<string | null>(null);
+const cashProcessing = ref(false);
+const cashInput = ref<{ $el?: HTMLInputElement } | null>(null);
+
+const cashOpen = computed({
+    get: () => cashOrder.value !== null,
+    set: (open: boolean) => {
+        if (!open) cashOrder.value = null;
+    },
+});
+const received = computed(() => Number(cashDigits.value) || 0);
+const cashTotal = computed(() => cashOrder.value?.total ?? 0);
+const change = computed(() => received.value - cashTotal.value);
+const receivedLabel = computed(() => (cashDigits.value === '' ? '' : new Intl.NumberFormat('es-CO').format(received.value)));
+
+// Suggested amounts: exact, then the total rounded up to common Colombian bills.
+const quickAmounts = computed(() => {
+    const total = cashTotal.value;
+    const rounded = [5000, 10000, 20000, 50000, 100000].map((bill) => Math.ceil(total / bill) * bill);
+    return [...new Set([total, ...rounded])].filter((amount) => amount >= total).sort((a, b) => a - b).slice(0, 4);
+});
+
+const openCash = (order: OrderCard) => {
+    cashOrder.value = order;
+    cashDigits.value = '';
+    cashError.value = null;
+};
+const setReceived = (value: string | number) => {
+    cashDigits.value = String(value).replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+    cashError.value = null;
+};
+const focusCashInput = (event: Event) => {
+    event.preventDefault();
+    nextTick(() => cashInput.value?.$el?.focus());
+};
+const confirmCash = () => {
+    const order = cashOrder.value;
+    if (!order || change.value < 0 || cashProcessing.value) return;
+
+    router.patch(
+        route('orders.status', order.id),
+        { status: 'delivered', payment_method: 'cash', cash_received: received.value },
+        {
+            preserveScroll: true,
+            onStart: () => (cashProcessing.value = true),
+            onFinish: () => (cashProcessing.value = false),
+            onSuccess: () => (cashOrder.value = null),
+            onError: (errors) => (cashError.value = errors.cash_received ?? Object.values(errors)[0] ?? 'No se pudo registrar el cobro.'),
+        },
+    );
 };
 
 const isMoto = (name: string) => name.toLowerCase().includes('moto');
@@ -327,7 +384,7 @@ onBeforeUnmount(() => {
                                             </a>
                                         </Button>
                                         <span v-else class="w-full text-xs text-muted-foreground">Sin celular válido para WhatsApp.</span>
-                                        <Button class="min-h-10 flex-1" @click="advance(order, 'delivered', 'cash')">Entregar · efectivo</Button>
+                                        <Button class="min-h-10 flex-1" @click="openCash(order)">Entregar · efectivo</Button>
                                         <Button class="min-h-10 flex-1" variant="outline" @click="advance(order, 'delivered', 'transfer')">Entregar · transferencia</Button>
                                     </template>
                                 </div>
@@ -341,12 +398,93 @@ onBeforeUnmount(() => {
                 <CardHeader class="pb-2"><CardTitle class="text-base">Entregados hoy</CardTitle></CardHeader>
                 <CardContent class="flex flex-col gap-2 text-sm">
                     <div v-for="order in delivered" :key="order.id" class="flex items-center justify-between gap-3">
-                        <span class="flex items-center gap-2"><span class="plate !text-sm">{{ order.plate }}</span> {{ order.services.join(' + ') }}</span>
+                        <span class="flex flex-wrap items-center gap-2">
+                            <span class="plate !text-sm">{{ order.plate }}</span> {{ order.services.join(' + ') }}
+                            <span v-if="order.cash_received !== null" class="text-xs text-muted-foreground">
+                                Recibió {{ money(order.cash_received) }} · devolvió {{ money(order.cash_received - order.total) }}
+                            </span>
+                        </span>
                         <span class="font-semibold">{{ money(order.total) }}</span>
                     </div>
                 </CardContent>
             </Card>
         </div>
+
+        <Dialog v-model:open="cashOpen">
+            <DialogContent class="sm:max-w-md" @open-auto-focus="focusCashInput">
+                <form class="flex flex-col gap-5" @submit.prevent="confirmCash">
+                    <DialogHeader class="space-y-2">
+                        <DialogTitle>Cobro en efectivo</DialogTitle>
+                        <DialogDescription class="flex items-center gap-2">
+                            <span class="plate">{{ cashOrder?.plate }}</span> {{ cashOrder?.services.join(' + ') }}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div class="rounded-xl bg-muted p-4 text-center">
+                        <p class="text-sm text-muted-foreground">Total a cobrar</p>
+                        <p class="font-display text-4xl font-extrabold tabular-nums" data-testid="cash-total">{{ money(cashTotal) }}</p>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <label for="cash-received" class="text-sm font-medium">¿Cuánto entregó el cliente?</label>
+                        <Input
+                            id="cash-received"
+                            ref="cashInput"
+                            :model-value="receivedLabel"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            placeholder="0"
+                            class="h-14 text-center font-display text-2xl font-bold tabular-nums"
+                            @update:model-value="setReceived"
+                        />
+                        <div class="flex flex-wrap gap-2">
+                            <Button
+                                v-for="(amount, index) in quickAmounts"
+                                :key="amount"
+                                type="button"
+                                size="sm"
+                                :variant="received === amount ? 'default' : 'outline'"
+                                @click="setReceived(amount)"
+                            >
+                                {{ index === 0 ? 'Exacto' : money(amount) }}
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div
+                        class="rounded-xl border-2 p-4 text-center transition-colors"
+                        :class="
+                            received === 0
+                                ? 'border-dashed text-muted-foreground'
+                                : change >= 0
+                                  ? 'border-status-ready bg-status-ready/10'
+                                  : 'border-destructive bg-destructive/10'
+                        "
+                        aria-live="polite"
+                        data-testid="cash-change"
+                    >
+                        <template v-if="received === 0">Escribe lo que entregó para ver el cambio.</template>
+                        <template v-else-if="change >= 0">
+                            <p class="text-sm text-muted-foreground">Devolver</p>
+                            <p class="font-display text-4xl font-extrabold tabular-nums">{{ money(change) }}</p>
+                        </template>
+                        <template v-else>
+                            <p class="text-sm text-muted-foreground">Falta</p>
+                            <p class="font-display text-4xl font-extrabold tabular-nums">{{ money(-change) }}</p>
+                        </template>
+                    </div>
+
+                    <p v-if="cashError" class="text-sm text-destructive" role="alert">{{ cashError }}</p>
+
+                    <DialogFooter class="gap-2 sm:gap-2">
+                        <Button type="button" variant="secondary" @click="cashOrder = null">Cancelar</Button>
+                        <Button type="submit" class="font-display font-bold" :disabled="received === 0 || change < 0 || cashProcessing">
+                            Confirmar y entregar
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
     </AppLayout>
 </template>
 
