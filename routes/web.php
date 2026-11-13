@@ -9,8 +9,9 @@ use App\Http\Controllers\VehicleLookupController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+// Signed-in users always start at Inicio; the landing page is for visitors.
 Route::get('/', function () {
-    return Inertia::render('Welcome');
+    return auth()->check() ? redirect()->route('dashboard') : Inertia::render('Welcome');
 })->name('home');
 
 Route::get('dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');

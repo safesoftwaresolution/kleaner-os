@@ -11,6 +11,12 @@ import AppLogo from './AppLogo.vue';
 const page = usePage<SharedData>();
 
 const mainNavItems = computed<NavItem[]>(() => [
+    // Inicio is always first: it is where signing in lands (see the home route and login redirect).
+    {
+        title: 'Inicio',
+        href: '/dashboard',
+        icon: LayoutGrid,
+    },
     {
         title: 'Tablero',
         href: '/orders',
@@ -25,11 +31,6 @@ const mainNavItems = computed<NavItem[]>(() => [
               { title: 'Precios', href: '/catalog', icon: Tags },
           ]
         : []),
-    {
-        title: 'Inicio',
-        href: '/dashboard',
-        icon: LayoutGrid,
-    },
 ]);
 
 </script>
