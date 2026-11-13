@@ -125,6 +125,40 @@ class VehicleDirectoryTest extends TestCase
                 ->where('vehicles.data.0.total_spent', 70000));
     }
 
+    public function test_the_list_exposes_a_whatsapp_number_only_for_valid_mobile_phones(): void
+    {
+        $this->vehicle('AAA111', $this->customer('Ana', '300 123 4567'));
+        $this->vehicle('BBB222', $this->customer('Fijo', '6012345678'));
+        $this->vehicle('CCC333');
+
+        $this->actingAs($this->owner)
+            ->get('/vehicles')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('business', 'Lavadero Uno')
+                ->where('vehicles.data.0.plate', 'AAA111')
+                ->where('vehicles.data.0.whatsapp_number', '573001234567')
+                ->where('vehicles.data.1.plate', 'BBB222')
+                ->where('vehicles.data.1.whatsapp_number', null)
+                ->where('vehicles.data.2.plate', 'CCC333')
+                ->where('vehicles.data.2.whatsapp_number', null));
+    }
+
+    public function test_the_detail_exposes_the_whatsapp_number_and_the_business_name(): void
+    {
+        $with = $this->vehicle('AAA111', $this->customer('Ana', '+57 300 123 4567'));
+        $without = $this->vehicle('BBB222');
+
+        $this->actingAs($this->owner)
+            ->get("/vehicles/{$with->id}")
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('vehicle.whatsapp_number', '573001234567')
+                ->where('business', 'Lavadero Uno'));
+
+        $this->actingAs($this->owner)
+            ->get("/vehicles/{$without->id}")
+            ->assertInertia(fn (Assert $page) => $page->where('vehicle.whatsapp_number', null));
+    }
+
     public function test_the_list_is_ordered_by_most_recent_visit(): void
     {
         $old = $this->vehicle('OLD111');

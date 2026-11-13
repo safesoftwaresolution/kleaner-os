@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Vehicle;
 use App\Models\VehicleType;
+use App\Support\Whatsapp;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -51,18 +52,20 @@ class VehicleController extends Controller
                 'type' => $vehicle->type->name,
                 'customer_name' => $vehicle->customer?->name,
                 'customer_phone' => $vehicle->customer?->phone,
+                'whatsapp_number' => Whatsapp::normalizePhone($vehicle->customer?->phone),
                 'visits' => (int) $vehicle->orders_count,
                 'total_spent' => (int) $vehicle->total_spent,
                 'last_visit' => $vehicle->last_visit ? Carbon::parse($vehicle->last_visit)->toIso8601String() : null,
             ]);
 
         return Inertia::render('Vehicles/Index', [
+            'business' => $request->user()->business->name,
             'vehicles' => $vehicles,
             'filters' => ['q' => $term],
         ]);
     }
 
-    public function show(Vehicle $vehicle): Response
+    public function show(Request $request, Vehicle $vehicle): Response
     {
         $vehicle->load(['type', 'customer']);
 
@@ -76,6 +79,7 @@ class VehicleController extends Controller
         $spent = (int) $delivered->sum('total');
 
         return Inertia::render('Vehicles/Show', [
+            'business' => $request->user()->business->name,
             'vehicle' => [
                 'id' => $vehicle->id,
                 'plate' => $vehicle->plate,
@@ -83,6 +87,7 @@ class VehicleController extends Controller
                 'type' => $vehicle->type->name,
                 'customer_name' => $vehicle->customer?->name,
                 'customer_phone' => $vehicle->customer?->phone,
+                'whatsapp_number' => Whatsapp::normalizePhone($vehicle->customer?->phone),
             ],
             'vehicleTypes' => VehicleType::orderBy('id')->get(['id', 'name']),
             'stats' => [

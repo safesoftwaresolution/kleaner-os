@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { Bike, Car, Phone, Search, User } from 'lucide-vue-next';
+import { messageTemplates, whatsappLink } from '@/lib/whatsapp';
+import { Bike, Car, MessageCircle, Phone, Search, User } from 'lucide-vue-next';
 import { onBeforeUnmount, ref, watch } from 'vue';
 
 interface Row {
@@ -14,6 +15,7 @@ interface Row {
     type: string;
     customer_name: string | null;
     customer_phone: string | null;
+    whatsapp_number: string | null;
     visits: number;
     total_spent: number;
     last_visit: string | null;
@@ -29,6 +31,7 @@ interface Paginator {
 }
 
 const props = defineProps<{
+    business: string;
     vehicles: Paginator;
     filters: { q: string };
 }>();
@@ -47,6 +50,10 @@ const since = (iso: string | null) => {
     if (days < 60) return `Hace ${Math.floor(days / 7)} semanas`;
     return `Hace ${Math.floor(days / 30)} meses`;
 };
+
+// Default greeting; the vehicle page lets staff pick another template and edit the text.
+const greetingLink = (vehicle: Row) =>
+    whatsappLink(vehicle.whatsapp_number, messageTemplates({ name: vehicle.customer_name, plate: vehicle.plate, business: props.business })[0].text);
 
 // Search as you type: wait for a pause, then reload only the list.
 const q = ref(props.filters.q);
@@ -93,10 +100,10 @@ onBeforeUnmount(() => clearTimeout(timer));
             </Card>
 
             <ul v-else class="flex flex-col gap-3">
-                <li v-for="(vehicle, i) in vehicles.data" :key="vehicle.id" class="animate-rise" :style="{ animationDelay: `${Math.min(i, 8) * 40}ms` }">
+                <li v-for="(vehicle, i) in vehicles.data" :key="vehicle.id" class="flex animate-rise items-stretch gap-2" :style="{ animationDelay: `${Math.min(i, 8) * 40}ms` }">
                     <Link
                         :href="route('vehicles.show', vehicle.id)"
-                        class="grid gap-3 rounded-xl border bg-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:grid-cols-[auto_1fr_auto] md:items-center"
+                        class="grid min-w-0 flex-1 gap-3 rounded-xl border bg-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:grid-cols-[auto_1fr_auto] md:items-center"
                         :data-testid="`vehicle-${vehicle.id}`"
                     >
                         <div class="flex items-center gap-3">
@@ -117,6 +124,27 @@ onBeforeUnmount(() => clearTimeout(timer));
                             <span class="font-display text-lg font-bold tabular-nums">{{ money(vehicle.total_spent) }}</span>
                         </div>
                     </Link>
+                    <a
+                        v-if="greetingLink(vehicle)"
+                        :href="greetingLink(vehicle)!"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="flex w-14 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border bg-card text-xs font-semibold shadow-sm transition hover:-translate-y-0.5 hover:bg-status-ready/10 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-24"
+                        :aria-label="`Enviar WhatsApp a ${vehicle.customer_name ?? vehicle.plate}`"
+                        :data-testid="`whatsapp-${vehicle.id}`"
+                    >
+                        <MessageCircle class="size-5 text-status-ready" />
+                        <span class="hidden sm:inline">WhatsApp</span>
+                    </a>
+                    <span
+                        v-else
+                        class="flex w-14 shrink-0 flex-col items-center justify-center rounded-xl border border-dashed text-muted-foreground opacity-60 sm:w-24"
+                        title="Sin celular válido para WhatsApp"
+                        :data-testid="`no-whatsapp-${vehicle.id}`"
+                    >
+                        <MessageCircle class="size-5" />
+                        <span class="sr-only">Sin celular válido para WhatsApp</span>
+                    </span>
                 </li>
             </ul>
 

@@ -5,10 +5,12 @@ import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, Bike, Car } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { messageTemplates, whatsappLink } from '@/lib/whatsapp';
+import { ArrowLeft, Bike, Car, MessageCircle } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps<{
+    business: string;
     vehicle: {
         id: number;
         plate: string;
@@ -16,6 +18,7 @@ const props = defineProps<{
         type: string;
         customer_name: string | null;
         customer_phone: string | null;
+        whatsapp_number: string | null;
     };
     vehicleTypes: { id: number; name: string }[];
     stats: { visits: number; delivered: number; total_spent: number; average: number; first_visit: string | null; last_visit: string | null };
@@ -59,6 +62,24 @@ const form = useForm({
     customer_name: props.vehicle.customer_name ?? '',
     customer_phone: props.vehicle.customer_phone ?? '',
 });
+
+// WhatsApp: pick a template, edit the text, and open the chat. The text resets when the saved contact changes.
+const templates = computed(() =>
+    messageTemplates({ name: props.vehicle.customer_name, plate: props.vehicle.plate, business: props.business }),
+);
+const message = ref(templates.value[0].text);
+const selectedTemplate = ref(templates.value[0].key);
+watch(
+    () => [props.vehicle.customer_name, props.vehicle.plate],
+    () => {
+        message.value = templates.value.find((t) => t.key === selectedTemplate.value)?.text ?? templates.value[0].text;
+    },
+);
+const pickTemplate = (key: string) => {
+    selectedTemplate.value = key;
+    message.value = templates.value.find((t) => t.key === key)?.text ?? message.value;
+};
+const chatLink = computed(() => whatsappLink(props.vehicle.whatsapp_number, message.value));
 
 const save = () => form.put(route('vehicles.update', props.vehicle.id), { preserveScroll: true });
 </script>
@@ -146,8 +167,49 @@ const save = () => form.put(route('vehicles.update', props.vehicle.id), { preser
                     </CardContent>
                 </Card>
 
-                <Card class="animate-rise [animation-delay:80ms]">
-                    <CardHeader><CardTitle>Historial</CardTitle></CardHeader>
+                <div class="flex flex-col gap-5">
+                    <Card class="animate-rise [animation-delay:80ms]">
+                        <CardHeader>
+                            <CardTitle class="flex items-center gap-2"><MessageCircle class="size-5 text-status-ready" /> Enviar WhatsApp</CardTitle>
+                        </CardHeader>
+                        <CardContent class="flex flex-col gap-3">
+                            <p v-if="!vehicle.whatsapp_number" class="rounded-lg border border-dashed p-3 text-sm text-muted-foreground" data-testid="no-whatsapp">
+                                Este cliente no tiene un celular colombiano válido. Agrégalo en «Datos» para poder escribirle por WhatsApp.
+                            </p>
+                            <template v-else>
+                                <div class="flex flex-wrap gap-2" role="group" aria-label="Plantillas de mensaje">
+                                    <Button
+                                        v-for="template in templates"
+                                        :key="template.key"
+                                        type="button"
+                                        size="sm"
+                                        :variant="selectedTemplate === template.key ? 'default' : 'outline'"
+                                        @click="pickTemplate(template.key)"
+                                    >
+                                        {{ template.label }}
+                                    </Button>
+                                </div>
+                                <label for="whatsapp-message" class="sr-only">Mensaje</label>
+                                <textarea
+                                    id="whatsapp-message"
+                                    v-model="message"
+                                    rows="4"
+                                    maxlength="1000"
+                                    class="min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                />
+                                <p class="text-xs text-muted-foreground">Se abre WhatsApp con este texto y tú tocas enviar.</p>
+                                <Button as-child class="h-11 font-display font-bold" :disabled="!chatLink">
+                                    <a v-if="chatLink" :href="chatLink" target="_blank" rel="noopener noreferrer" data-testid="open-whatsapp">
+                                        <MessageCircle class="size-5" /> Abrir WhatsApp
+                                    </a>
+                                    <span v-else>Escribe un mensaje</span>
+                                </Button>
+                            </template>
+                        </CardContent>
+                    </Card>
+
+                    <Card class="animate-rise [animation-delay:120ms]">
+                        <CardHeader><CardTitle>Historial</CardTitle></CardHeader>
                     <CardContent>
                         <p v-if="!history.length" class="py-6 text-center text-muted-foreground">Este vehículo aún no tiene visitas.</p>
                         <ol v-else class="flex flex-col divide-y">
@@ -165,8 +227,9 @@ const save = () => form.put(route('vehicles.update', props.vehicle.id), { preser
                                 <p class="font-display text-lg font-bold tabular-nums">{{ money(visit.total) }}</p>
                             </li>
                         </ol>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </div>
     </AppLayout>
